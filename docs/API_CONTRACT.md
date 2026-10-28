@@ -6,25 +6,23 @@ http://localhost:3001/api
 
 ## Endpoints
 
-| Método | Ruta | Respuesta exitosa |
+| Método | Ruta | Respuesta |
 |---|---|---|
-| GET | /health | 200 — Estado del servicio |
-| GET | /rules | 200 — Listado resumido |
-| GET | /rules/:ruleId | 200 — Regla completa |
-| POST | /rules | 201 — Regla creada |
-| PUT | /rules/:ruleId | 200 — Regla actualizada |
-| PATCH | /rules/:ruleId/status | 200 — Estado actualizado |
+| GET | /health | 200 |
+| GET | /rules | 200 |
+| GET | /rules/:ruleId | 200 |
+| POST | /rules | 201 |
+| PUT | /rules/:ruleId | 200 |
+| PATCH | /rules/:ruleId/status | 200 |
 
 ## Crear y actualizar reglas
 
 POST /api/rules
 PUT /api/rules/:ruleId
 
-Ambos reciben nombre, disparador, lógica, condiciones y acciones.
-
 Ejemplo:
 
-```json
+```json id="pewrfr"
 {
   "name": "Pagos importantes",
   "trigger": "payment_received",
@@ -49,74 +47,70 @@ Ejemplo:
 }
 ```
 
-El servidor genera el ID de cada regla y establece isActive=true
-al crearla. Las actualizaciones conservan su ID y estado.
+El servidor genera el UUID principal y establece
+isActive=true al crear una regla.
+
+Actualizar conserva el UUID y el estado activo.
 
 ## Cambiar estado
 
 PATCH /api/rules/:ruleId/status
 
-```json
+```json id="vxc807"
 {
   "isActive": false
 }
 ```
 
-## Respuestas de error
+## Errores
 
-| HTTP | Código | Significado |
-|---|---|---|
-| 400 | BAD_REQUEST | Cuerpo JSON no válido para la operación |
-| 400 | INVALID_JSON | JSON mal formado |
-| 404 | RULE_NOT_FOUND | Regla inexistente |
-| 404 | ROUTE_NOT_FOUND | Ruta desconocida |
-| 409 | DUPLICATE_RULE_NAME | Nombre duplicado |
-| 413 | PAYLOAD_TOO_LARGE | Cuerpo mayor que el límite |
-| 422 | VALIDATION_ERROR | Datos inválidos |
-| 500 | INTERNAL_SERVER_ERROR | Error inesperado |
+| HTTP | Código |
+|---|---|
+| 400 | BAD_REQUEST |
+| 400 | INVALID_JSON |
+| 404 | RULE_NOT_FOUND |
+| 404 | ROUTE_NOT_FOUND |
+| 409 | DUPLICATE_RULE_NAME |
+| 413 | PAYLOAD_TOO_LARGE |
+| 422 | VALIDATION_ERROR |
+| 500 | INTERNAL_SERVER_ERROR |
 
-Formato general:
+Formato de error:
 
-```json
+```json id="72xtdo"
 {
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Los datos de la regla son inválidos.",
-    "details": ["actions: agrega al menos una acción."]
+    "code": "DUPLICATE_RULE_NAME",
+    "message": "Ya existe una regla con este nombre."
   }
 }
 ```
 
-El campo details es opcional.
-
 ## Reglas de negocio
 
-- Nombre obligatorio y único, sin distinguir mayúsculas.
-- Tres disparadores: customer_created, payment_received y ticket_unanswered.
-- Cero o más condiciones; las agregadas deben ser válidas.
-- Operadores según el tipo de campo y lógica AND/OR.
+- Nombre obligatorio y único sin distinguir mayúsculas.
+- Disparadores: customer_created, payment_received,
+  ticket_unanswered.
+- Cero o más condiciones.
+- Operadores según tipo de campo.
+- Lógica AND u OR.
 - Al menos una acción Email, SMS o Webhook.
 - Email requiere destinatario, asunto y cuerpo.
-- SMS requiere teléfono y mensaje de máximo 160 caracteres.
+- SMS admite máximo 160 caracteres.
 - Webhook requiere URL HTTP/HTTPS y método POST o PUT.
 
-## Estado de la implementación
+## Persistencia
 
-Paso 8: API REST con operaciones y validación del lado del servidor.
+Los datos se almacenan en PostgreSQL.
 
-Actualmente se utiliza almacenamiento temporal en memoria.
-Las reglas se pierden cuando reinicia el proceso.
+El nombre único está protegido con un índice SQL.
+La creación y edición utilizan transacciones.
 
-La persistencia PostgreSQL y la integración con React
-se implementarán en etapas posteriores.
+Los datos sobreviven al reinicio del proceso Express.
 
 ## Pruebas
 
-```bash
-npm run typecheck
-npm run build
-npm test
-```
+El conjunto automatizado usa una base separada:
+notification_rules_test_db.
 
-Las pruebas levantan un servidor temporal independiente del servidor
-de desarrollo.
+La base de desarrollo no es alterada por npm test.

@@ -7,18 +7,25 @@ REST API for the Notification Rules Builder project.
 - Node.js 22.19.0
 - Express
 - TypeScript
-- PostgreSQL (upcoming persistence stage)
+- PostgreSQL 17
+- node-postgres (pg)
+- Node.js Test Runner
 
 ## Setup
 
-```bash
+```bash id="qmku9b"
 npm install
 cp .env.example .env
 ```
 
+Configure DB_* variables in .env using the application
+database credentials.
+
+Never commit .env to Git.
+
 ## Development
 
-```bash
+```bash id="sfqn98"
 npm run dev
 ```
 
@@ -26,11 +33,17 @@ Local server: http://localhost:3001
 
 ## Validation
 
-```bash
+```bash id="hl7jbs"
 npm run typecheck
 npm run build
 npm test
 ```
+
+Tests exclusively use notification_rules_test_db
+and clean up the records created during each run.
+
+Create the test database and apply the schema before
+running npm test. See docs/DATABASE.en.md.
 
 ## Endpoints
 
@@ -41,15 +54,19 @@ npm test
 - PUT /api/rules/:ruleId
 - PATCH /api/rules/:ruleId/status
 
-See docs/API_CONTRACT.en.md for the complete API contract.
+Full contract: docs/API_CONTRACT.en.md
 
 ## Persistence
 
-The backend currently uses temporary in-memory storage.
-Rules are lost when the server restarts.
+Rules, conditions and actions are stored in PostgreSQL.
 
-PostgreSQL persistence will be implemented later.
+Create and update operations use SQL transactions
+to preserve data integrity.
+
+Schema: sql/001_initial_schema.sql
+
+Documentation: docs/DATABASE.en.md
 
 ## Repository
 
-Independent backend project for Notification Rules Builder.
+Independent backend for Notification Rules Builder.

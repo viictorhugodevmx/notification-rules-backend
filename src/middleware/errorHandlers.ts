@@ -16,6 +16,19 @@ function getErrorType(error: unknown): string | null {
   return null;
 }
 
+function isDuplicateRuleNameError(
+  error: unknown
+): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === '23505' &&
+    'constraint' in error &&
+    error.constraint === 'unique_normalized_rule_name'
+  );
+}
+
 export const handleRouteNotFound: RequestHandler = (
   _request,
   response
@@ -36,6 +49,16 @@ export const handleApiError: ErrorRequestHandler = (
 ) => {
   if (response.headersSent) {
     next(error);
+    return;
+  }
+
+  if (isDuplicateRuleNameError(error)) {
+    response.status(409).json({
+      error: {
+        code: 'DUPLICATE_RULE_NAME',
+        message: 'Ya existe una regla con este nombre.',
+      },
+    });
     return;
   }
 

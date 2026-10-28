@@ -6,25 +6,23 @@ http://localhost:3001/api
 
 ## Endpoints
 
-| Method | Route | Success response |
+| Method | Route | Success |
 |---|---|---|
-| GET | /health | 200 — Service status |
-| GET | /rules | 200 — Rule summaries |
-| GET | /rules/:ruleId | 200 — Complete rule |
-| POST | /rules | 201 — Rule created |
-| PUT | /rules/:ruleId | 200 — Rule updated |
-| PATCH | /rules/:ruleId/status | 200 — Status updated |
+| GET | /health | 200 |
+| GET | /rules | 200 |
+| GET | /rules/:ruleId | 200 |
+| POST | /rules | 201 |
+| PUT | /rules/:ruleId | 200 |
+| PATCH | /rules/:ruleId/status | 200 |
 
 ## Creating and updating rules
 
 POST /api/rules
 PUT /api/rules/:ruleId
 
-Both accept name, trigger, condition logic, conditions and actions.
-
 Example:
 
-```json
+```json id="9qz551"
 {
   "name": "Important payments",
   "trigger": "payment_received",
@@ -49,73 +47,72 @@ Example:
 }
 ```
 
-The server generates rule IDs and defaults new rules to
-isActive=true. Updates preserve the rule ID and active status.
+The server generates the primary UUID and defaults
+new rules to isActive=true.
 
-## Status update
+Updates preserve the UUID and active status.
+
+## Updating status
 
 PATCH /api/rules/:ruleId/status
 
-```json
+```json id="n99n39"
 {
   "isActive": false
 }
 ```
 
-## Error responses
+## Errors
 
-| HTTP | Code | Meaning |
-|---|---|---|
-| 400 | BAD_REQUEST | Invalid request body |
-| 400 | INVALID_JSON | Malformed JSON |
-| 404 | RULE_NOT_FOUND | Rule does not exist |
-| 404 | ROUTE_NOT_FOUND | Unknown route |
-| 409 | DUPLICATE_RULE_NAME | Duplicate name |
-| 413 | PAYLOAD_TOO_LARGE | Request body exceeds limit |
-| 422 | VALIDATION_ERROR | Invalid rule data |
-| 500 | INTERNAL_SERVER_ERROR | Unexpected error |
+| HTTP | Code |
+|---|---|
+| 400 | BAD_REQUEST |
+| 400 | INVALID_JSON |
+| 404 | RULE_NOT_FOUND |
+| 404 | ROUTE_NOT_FOUND |
+| 409 | DUPLICATE_RULE_NAME |
+| 413 | PAYLOAD_TOO_LARGE |
+| 422 | VALIDATION_ERROR |
+| 500 | INTERNAL_SERVER_ERROR |
 
-General format:
+Error format:
 
-```json
+```json id="ha8u9m"
 {
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Los datos de la regla son inválidos.",
-    "details": ["actions: agrega al menos una acción."]
+    "code": "DUPLICATE_RULE_NAME",
+    "message": "Ya existe una regla con este nombre."
   }
 }
 ```
 
-The details property is optional. Current API error messages
-are written in Spanish.
+Current error messages are written in Spanish.
 
 ## Business rules
 
-- Rule names are required and case-insensitively unique.
-- Three triggers are supported.
-- Zero or more conditions; configured conditions must be valid.
-- Field-specific operators with AND/OR logic.
+- Required, case-insensitively unique names.
+- Triggers: customer_created, payment_received,
+  ticket_unanswered.
+- Zero or more conditions.
+- Operators depend on field types.
+- AND or OR condition logic.
 - At least one Email, SMS or Webhook action.
 - Email requires recipient, subject and body.
-- SMS requires a phone number and a message up to 160 characters.
-- Webhook requires an HTTP/HTTPS URL and POST or PUT.
+- SMS messages allow up to 160 characters.
+- Webhook requires HTTP/HTTPS and POST or PUT.
 
-## Implementation status
+## Persistence
 
-Step 8: working REST API with server-side validation.
+Data is stored in PostgreSQL.
 
-Storage is currently in memory. Rules are lost on server restart.
+A unique SQL index protects rule names.
+Create and update operations use transactions.
 
-PostgreSQL persistence and React integration are planned
-for subsequent stages.
+Data survives Express process restarts.
 
 ## Tests
 
-```bash
-npm run typecheck
-npm run build
-npm test
-```
+Automated tests use a separate database:
+notification_rules_test_db.
 
-Integration tests use an independent temporary server.
+npm test does not modify the development database.

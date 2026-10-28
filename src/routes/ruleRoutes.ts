@@ -5,7 +5,6 @@ import type { Response } from 'express';
 import {
   listRules,
   getRuleById,
-  isRuleNameTaken,
   createRule,
   updateRule,
   updateRuleStatus,
@@ -44,155 +43,19 @@ function isJsonObject(
 }
 
 // GET /api/rules
-ruleRouter.get('/', (_request, response) => {
-  response.status(200).json(listRules());
+ruleRouter.get('/', async (_request, response, next) => {
+  try {
+    const rules = await listRules();
+
+    response.status(200).json(rules);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // GET /api/rules/:ruleId
-ruleRouter.get('/:ruleId', (request, response) => {
-  const ruleId = request.params.ruleId;
-
-  if (typeof ruleId !== 'string') {
-    sendError(
-      response,
-      400,
-      'BAD_REQUEST',
-      'Identificador inválido.'
-    );
-    return;
-  }
-
-  const rule = getRuleById(ruleId);
-
-  if (!rule) {
-    sendError(
-      response,
-      404,
-      'RULE_NOT_FOUND',
-      'La regla solicitada no existe.'
-    );
-    return;
-  }
-
-  response.status(200).json(rule);
-});
-
-// POST /api/rules
-ruleRouter.post('/', (request, response) => {
-  const body: unknown = request.body;
-
-  if (!isJsonObject(body)) {
-    sendError(
-      response,
-      400,
-      'BAD_REQUEST',
-      'Se requiere un objeto JSON.'
-    );
-    return;
-  }
-
-  const validation = validateRuleInput(body);
-
-  if (!validation.success) {
-    sendError(
-      response,
-      422,
-      'VALIDATION_ERROR',
-      'Los datos de la regla son inválidos.',
-      validation.errors
-    );
-    return;
-  }
-
-  if (isRuleNameTaken(validation.data.name)) {
-    sendError(
-      response,
-      409,
-      'DUPLICATE_RULE_NAME',
-      'Ya existe una regla con este nombre.'
-    );
-    return;
-  }
-
-  const rule = createRule(validation.data);
-
-  response
-    .location(`/api/rules/${rule.id}`)
-    .status(201)
-    .json(rule);
-});
-
-// PUT /api/rules/:ruleId
-ruleRouter.put('/:ruleId', (request, response) => {
-  const ruleId = request.params.ruleId;
-
-  if (typeof ruleId !== 'string') {
-    sendError(
-      response,
-      400,
-      'BAD_REQUEST',
-      'Identificador inválido.'
-    );
-    return;
-  }
-
-  if (!getRuleById(ruleId)) {
-    sendError(
-      response,
-      404,
-      'RULE_NOT_FOUND',
-      'La regla solicitada no existe.'
-    );
-    return;
-  }
-
-  const body: unknown = request.body;
-
-  if (!isJsonObject(body)) {
-    sendError(
-      response,
-      400,
-      'BAD_REQUEST',
-      'Se requiere un objeto JSON.'
-    );
-    return;
-  }
-
-  const validation = validateRuleInput(body);
-
-  if (!validation.success) {
-    sendError(
-      response,
-      422,
-      'VALIDATION_ERROR',
-      'Los datos de la regla son inválidos.',
-      validation.errors
-    );
-    return;
-  }
-
-  if (isRuleNameTaken(validation.data.name, ruleId)) {
-    sendError(
-      response,
-      409,
-      'DUPLICATE_RULE_NAME',
-      'Ya existe una regla con este nombre.'
-    );
-    return;
-  }
-
-  const updatedRule = updateRule(
-    ruleId,
-    validation.data
-  );
-
-  response.status(200).json(updatedRule);
-});
-
-// PATCH /api/rules/:ruleId/status
-ruleRouter.patch(
-  '/:ruleId/status',
-  (request, response) => {
+ruleRouter.get('/:ruleId', async (request, response, next) => {
+  try {
     const ruleId = request.params.ruleId;
 
     if (typeof ruleId !== 'string') {
@@ -205,7 +68,81 @@ ruleRouter.patch(
       return;
     }
 
-    if (!getRuleById(ruleId)) {
+    const rule = await getRuleById(ruleId);
+
+    if (!rule) {
+      sendError(
+        response,
+        404,
+        'RULE_NOT_FOUND',
+        'La regla solicitada no existe.'
+      );
+      return;
+    }
+
+    response.status(200).json(rule);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/rules
+ruleRouter.post('/', async (request, response, next) => {
+  try {
+    const body: unknown = request.body;
+
+    if (!isJsonObject(body)) {
+      sendError(
+        response,
+        400,
+        'BAD_REQUEST',
+        'Se requiere un objeto JSON.'
+      );
+      return;
+    }
+
+    const validation = validateRuleInput(body);
+
+    if (!validation.success) {
+      sendError(
+        response,
+        422,
+        'VALIDATION_ERROR',
+        'Los datos de la regla son inválidos.',
+        validation.errors
+      );
+      return;
+    }
+
+    const rule = await createRule(validation.data);
+
+    response
+      .location(`/api/rules/${rule.id}`)
+      .status(201)
+      .json(rule);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /api/rules/:ruleId
+ruleRouter.put('/:ruleId', async (request, response, next) => {
+  try {
+    const ruleId = request.params.ruleId;
+
+    if (typeof ruleId !== 'string') {
+      sendError(
+        response,
+        400,
+        'BAD_REQUEST',
+        'Identificador inválido.'
+      );
+      return;
+    }
+
+    const existingRule = await getRuleById(ruleId);
+
+    if (!existingRule) {
       sendError(
         response,
         404,
@@ -227,21 +164,109 @@ ruleRouter.patch(
       return;
     }
 
-    if (typeof body.isActive !== 'boolean') {
+    const validation = validateRuleInput(body);
+
+    if (!validation.success) {
       sendError(
         response,
         422,
         'VALIDATION_ERROR',
-        'isActive debe ser true o false.'
+        'Los datos de la regla son inválidos.',
+        validation.errors
       );
       return;
     }
 
-    const updatedRule = updateRuleStatus(
+    const updatedRule = await updateRule(
       ruleId,
-      body.isActive
+      validation.data
     );
 
+    if (!updatedRule) {
+      sendError(
+        response,
+        404,
+        'RULE_NOT_FOUND',
+        'La regla solicitada no existe.'
+      );
+      return;
+    }
+
     response.status(200).json(updatedRule);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/rules/:ruleId/status
+ruleRouter.patch(
+  '/:ruleId/status',
+  async (request, response, next) => {
+    try {
+      const ruleId = request.params.ruleId;
+
+      if (typeof ruleId !== 'string') {
+        sendError(
+          response,
+          400,
+          'BAD_REQUEST',
+          'Identificador inválido.'
+        );
+        return;
+      }
+
+      const existingRule = await getRuleById(ruleId);
+
+      if (!existingRule) {
+        sendError(
+          response,
+          404,
+          'RULE_NOT_FOUND',
+          'La regla solicitada no existe.'
+        );
+        return;
+      }
+
+      const body: unknown = request.body;
+
+      if (!isJsonObject(body)) {
+        sendError(
+          response,
+          400,
+          'BAD_REQUEST',
+          'Se requiere un objeto JSON.'
+        );
+        return;
+      }
+
+      if (typeof body.isActive !== 'boolean') {
+        sendError(
+          response,
+          422,
+          'VALIDATION_ERROR',
+          'isActive debe ser true o false.'
+        );
+        return;
+      }
+
+      const updatedRule = await updateRuleStatus(
+        ruleId,
+        body.isActive
+      );
+
+      if (!updatedRule) {
+        sendError(
+          response,
+          404,
+          'RULE_NOT_FOUND',
+          'La regla solicitada no existe.'
+        );
+        return;
+      }
+
+      response.status(200).json(updatedRule);
+    } catch (error) {
+      next(error);
+    }
   }
 );
